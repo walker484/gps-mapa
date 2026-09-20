@@ -10,7 +10,7 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  >
 
   <style>
     * {
@@ -19,16 +19,15 @@
 
     body {
       margin: 0;
+      background: #07111f;
+      color: white;
       font-family: Arial, sans-serif;
-      background: #f4f7fb;
-      color: #172033;
     }
 
     header {
-      background: white;
+      background: #0d1b2e;
       padding: 15px;
       text-align: center;
-      box-shadow: 0 2px 8px #0002;
     }
 
     h1 {
@@ -38,64 +37,53 @@
 
     #status {
       margin-top: 7px;
-      font-size: 14px;
-      font-weight: bold;
-      color: #1677ff;
+      color: #7dd3fc;
     }
 
     #map {
       width: 100%;
-      height: 60vh;
-      min-height: 360px;
+      height: 58vh;
     }
 
     .painel {
       padding: 12px;
+      background: #0d1b2e;
     }
 
-    .dados {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .card {
-      background: white;
-      padding: 13px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px #0001;
+    .item {
+      background: #13243a;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 10px;
     }
 
     .titulo {
+      color: #93c5fd;
       font-size: 12px;
-      color: #687386;
     }
 
     .valor {
-      margin-top: 5px;
-      font-size: 15px;
-      font-weight: bold;
+      margin-top: 4px;
+      font-size: 16px;
     }
 
     button {
       width: 100%;
-      margin-top: 12px;
-      padding: 15px;
+      padding: 13px;
       border: 0;
-      border-radius: 12px;
-      background: #1677ff;
+      border-radius: 10px;
+      background: #2563eb;
       color: white;
       font-size: 16px;
       font-weight: bold;
+      margin-top: 5px;
     }
 
-    .comercio {
-      font-size: 14px;
-      line-height: 1.4;
-    }
-
-    .comercio strong {
-      font-size: 16px;
+    .parada {
+      background: #182b43;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 8px;
     }
   </style>
 </head>
@@ -104,40 +92,50 @@
 
 <header>
   <h1>📍 Monitoramento GPS</h1>
-  <div id="status">Aguardando localização...</div>
+  <div id="status">Iniciando GPS...</div>
 </header>
 
 <div id="map"></div>
 
 <div class="painel">
 
-  <div class="dados">
-
-    <div class="card">
-      <div class="titulo">Latitude</div>
-      <div class="valor" id="latitude">--</div>
-    </div>
-
-    <div class="card">
-      <div class="titulo">Longitude</div>
-      <div class="valor" id="longitude">--</div>
-    </div>
-
-    <div class="card">
-      <div class="titulo">Precisão</div>
-      <div class="valor" id="precisao">--</div>
-    </div>
-
-    <div class="card">
-      <div class="titulo">Movimento</div>
-      <div class="valor" id="movimento">--</div>
-    </div>
-
+  <div class="item">
+    <div class="titulo">LOCALIZAÇÃO</div>
+    <div class="valor" id="localizacao">---</div>
   </div>
 
-  <button onclick="iniciarGPS()">
-    📡 Iniciar monitoramento
+  <div class="item">
+    <div class="titulo">VELOCIDADE</div>
+    <div class="valor" id="velocidade">---</div>
+  </div>
+
+  <div class="item">
+    <div class="titulo">MOVIMENTO</div>
+    <div class="valor" id="movimento">---</div>
+  </div>
+
+  <div class="item">
+    <div class="titulo">TEMPO PARADO NO LOCAL ATUAL</div>
+    <div class="valor" id="tempoParado">---</div>
+  </div>
+
+  <div class="item">
+    <div class="titulo">PRECISÃO GPS</div>
+    <div class="valor" id="precisao">---</div>
+  </div>
+
+  <div class="item">
+    <div class="titulo">PONTOS GUARDADOS</div>
+    <div class="valor" id="pontos">0</div>
+  </div>
+
+  <button onclick="centralizar()">
+    📍 Minha localização
   </button>
+
+  <h3>🅿️ Histórico de paradas</h3>
+
+  <div id="historicoParadas"></div>
 
 </div>
 
@@ -147,256 +145,561 @@
 
 <script type="module">
 
-/* =========================
-   FIREBASE
-========================= */
+import { initializeApp }
+
+from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+
 
 import {
-  initializeApp
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 
-import {
   getDatabase,
   ref,
-  set
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+  push,
+  onChildAdded
 
+}
+
+from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+
+// =====================================================
+// FIREBASE
+// =====================================================
 
 const firebaseConfig = {
 
   apiKey:
-    "AIzaSyCL6zN5WSnqpjCg4gkmAJPurFrlMWEonco",
+  "AIzaSyCL6zN5WSnqpjCg4gkmAJPurFrlMWEonco",
 
   authDomain:
-    "banco-dados-94bb6.firebaseapp.com",
-
-  databaseURL:
-    "https://banco-dados-94bb6-default-rtdb.firebaseio.com",
+  "banco-dados-94bb6.firebaseapp.com",
 
   projectId:
-    "banco-dados-94bb6",
+  "banco-dados-94bb6",
 
   storageBucket:
-    "banco-dados-94bb6.firebasestorage.app",
+  "banco-dados-94bb6.firebasestorage.app",
 
   messagingSenderId:
-    "496860851807",
+  "496860851807",
 
   appId:
-    "1:496860851807:web:3e830aabc6463dd51275ea"
+  "1:496860851807:web:3e830aabc6463dd51275ea"
+
 };
 
 
 const app = initializeApp(firebaseConfig);
 
-const database = getDatabase(app);
+const db = getDatabase(app);
 
 
-/* =========================
-   MAPA
-========================= */
+// =====================================================
+// MAPA
+// =====================================================
 
 const mapa = L.map("map").setView(
   [-19.9167, -43.9345],
-  15
+  13
 );
 
 
 L.tileLayer(
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
-    maxZoom: 19,
+    maxZoom: 20,
     attribution: "&copy; OpenStreetMap"
   }
 ).addTo(mapa);
 
 
-/* =========================
-   VARIÁVEIS
-========================= */
-
 let marcador = null;
+
 let circulo = null;
 
+let primeiraLocalizacao = true;
+
+
+// Caminho percorrido
+
+const caminho = L.polyline(
+  [],
+  {
+    weight: 5
+  }
+).addTo(mapa);
+
+
+// =====================================================
+// CONTROLE DE PARADA
+// =====================================================
+
+let estaParado = false;
+
+let inicioParada = null;
+
+let latitudeParada = null;
+
+let longitudeParada = null;
+
 let ultimaLatitude = null;
+
 let ultimaLongitude = null;
 
-let comercios = [];
+let ultimaGravacao = 0;
 
-let ultimaBuscaComercio = 0;
-
-
-/* =========================
-   ÍCONES
-========================= */
-
-const iconeComercio =
-  L.divIcon({
-
-    className: "",
-
-    html: `
-      <div style="
-        background:white;
-        border:2px solid #1677ff;
-        border-radius:50%;
-        width:34px;
-        height:34px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-size:18px;
-        box-shadow:0 2px 6px #0004;
-      ">
-        🏪
-      </div>
-    `,
-
-    iconSize: [34,34],
-
-    iconAnchor: [17,17]
-
-  });
+let quantidadePontos = 0;
 
 
-/* =========================
-   GPS
-========================= */
+// =====================================================
+// DISTÂNCIA
+// =====================================================
 
-window.iniciarGPS = function() {
+function distanciaMetros(
+  lat1,
+  lon1,
+  lat2,
+  lon2
+) {
 
-  if (!navigator.geolocation) {
+  const R = 6371000;
 
-    document.getElementById("status").innerText =
-      "❌ GPS não disponível.";
+  const rad = Math.PI / 180;
 
-    return;
+  const dLat =
+    (lat2 - lat1) * rad;
+
+  const dLon =
+    (lon2 - lon1) * rad;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+
+    Math.cos(lat1 * rad) *
+    Math.cos(lat2 * rad) *
+    Math.sin(dLon / 2) ** 2;
+
+  const c =
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    );
+
+  return R * c;
+}
+
+
+// =====================================================
+// FORMATA TEMPO
+// =====================================================
+
+function formatarTempo(ms) {
+
+  let segundos =
+    Math.floor(ms / 1000);
+
+  const horas =
+    Math.floor(segundos / 3600);
+
+  segundos %= 3600;
+
+  const minutos =
+    Math.floor(segundos / 60);
+
+  segundos %= 60;
+
+
+  if (horas > 0) {
+
+    return (
+      horas + "h " +
+      minutos + "min " +
+      segundos + "s"
+    );
+
   }
 
 
-  document.getElementById("status").innerText =
-    "🔎 Procurando GPS...";
+  return (
+    minutos + "min " +
+    segundos + "s"
+  );
+
+}
+
+
+// =====================================================
+// MOVIMENTO
+// =====================================================
+
+function movimentoGPS(velocidade) {
+
+  if (velocidade >= 5) {
+
+    return "🚗 EM MOVIMENTO";
+
+  }
+
+  if (velocidade >= 1) {
+
+    return "🚶 MOVIMENTO LENTO";
+
+  }
+
+  return "🅿️ PARADO";
+
+}
+
+
+// =====================================================
+// SALVAR PONTO
+// =====================================================
+
+async function salvarPonto(
+  latitude,
+  longitude,
+  velocidade,
+  precisao,
+  timestamp
+) {
+
+  try {
+
+    await push(
+
+      ref(
+        db,
+        "historico/celular01"
+      ),
+
+      {
+
+        latitude,
+        longitude,
+
+        velocidade,
+        precisao,
+
+        timestamp,
+
+        data:
+        new Date(
+          timestamp
+        ).toLocaleString(
+          "pt-BR"
+        )
+
+      }
+
+    );
+
+  } catch (erro) {
+
+    console.error(
+      erro
+    );
+
+  }
+
+}
+
+
+// =====================================================
+// COMEÇOU UMA PARADA
+// =====================================================
+
+async function iniciarParada(
+  latitude,
+  longitude,
+  timestamp
+) {
+
+  estaParado = true;
+
+  inicioParada = timestamp;
+
+  latitudeParada = latitude;
+
+  longitudeParada = longitude;
+
+
+  document.getElementById(
+    "movimento"
+  ).textContent =
+    "🅿️ PARADO";
+
+
+  console.log(
+    "Parou:",
+    new Date(timestamp)
+  );
+
+}
+
+
+// =====================================================
+// TERMINOU UMA PARADA
+// =====================================================
+
+async function finalizarParada(
+  latitude,
+  longitude,
+  timestamp
+) {
+
+  if (!estaParado) return;
+
+
+  const duracao =
+    timestamp -
+    inicioParada;
+
+
+  const dadosParada = {
+
+    latitude:
+    latitudeParada,
+
+    longitude:
+    longitudeParada,
+
+    inicio:
+    inicioParada,
+
+    fim:
+    timestamp,
+
+    duracao:
+
+    Math.floor(
+      duracao / 1000
+    ),
+
+    inicioTexto:
+
+    new Date(
+      inicioParada
+    ).toLocaleString(
+      "pt-BR"
+    ),
+
+    fimTexto:
+
+    new Date(
+      timestamp
+    ).toLocaleString(
+      "pt-BR"
+    ),
+
+    duracaoTexto:
+
+    formatarTempo(
+      duracao
+    )
+
+  };
+
+
+  try {
+
+    await push(
+
+      ref(
+        db,
+        "paradas/celular01"
+      ),
+
+      dadosParada
+
+    );
+
+  } catch (erro) {
+
+    console.error(
+      "Erro ao salvar parada:",
+      erro
+    );
+
+  }
+
+
+  estaParado = false;
+
+  inicioParada = null;
+
+  latitudeParada = null;
+
+  longitudeParada = null;
+
+
+  document.getElementById(
+    "tempoParado"
+  ).textContent =
+    "---";
+
+
+  console.log(
+    "Saiu do local.",
+    formatarTempo(duracao)
+  );
+
+}
+
+
+// =====================================================
+// GPS
+// =====================================================
+
+function iniciarGPS() {
+
+  if (!navigator.geolocation) {
+
+    document.getElementById(
+      "status"
+    ).textContent =
+      "❌ GPS não disponível.";
+
+    return;
+
+  }
 
 
   navigator.geolocation.watchPosition(
 
-    async function(posicao) {
+    async function(position) {
 
       const latitude =
-        posicao.coords.latitude;
+        position.coords.latitude;
 
       const longitude =
-        posicao.coords.longitude;
-
-      const precisao =
-        posicao.coords.accuracy;
+        position.coords.longitude;
 
 
       let velocidade =
-        posicao.coords.speed;
+        position.coords.speed;
 
 
-      if (velocidade === null) {
+      if (
+        velocidade === null ||
+        isNaN(velocidade)
+      ) {
 
         velocidade = 0;
 
-      } else {
-
-        velocidade =
-          velocidade * 3.6;
-
       }
 
 
-      /* =========================
-         MOVIMENTO
-      ========================= */
+      // metros por segundo → km/h
 
-      let tipoMovimento =
-        "🅿️ PARADO";
+      velocidade *= 3.6;
 
 
-      if (velocidade >= 5) {
-
-        tipoMovimento =
-          "🚗 MOVIMENTO";
-
-      } else if (velocidade >= 1) {
-
-        tipoMovimento =
-          "🚶 A PÉ";
-
-      }
+      const precisao =
+        position.coords.accuracy;
 
 
-      /* =========================
-         TELA
-      ========================= */
+      const agora =
+        Date.now();
 
-      document.getElementById("latitude").innerText =
-        latitude.toFixed(6);
 
-      document.getElementById("longitude").innerText =
+      const estaEmMovimento =
+        velocidade >= 1;
+
+
+      // ==========================================
+      // TELA
+      // ==========================================
+
+      document.getElementById(
+        "localizacao"
+      ).textContent =
+
+        latitude.toFixed(6) +
+        ", " +
         longitude.toFixed(6);
 
-      document.getElementById("precisao").innerText =
-        Math.round(precisao) + " metros";
 
-      document.getElementById("movimento").innerText =
-        tipoMovimento;
+      document.getElementById(
+        "velocidade"
+      ).textContent =
 
-
-      document.getElementById("status").innerText =
-        "🟢 GPS conectado";
+        velocidade.toFixed(1) +
+        " km/h";
 
 
-      /* =========================
-         MARCADOR
-      ========================= */
+      document.getElementById(
+        "precisao"
+      ).textContent =
+
+        precisao.toFixed(1) +
+        " metros";
+
+
+      document.getElementById(
+        "status"
+      ).textContent =
+        "🟢 GPS funcionando";
+
+
+      // ==========================================
+      // MARCADOR
+      // ==========================================
 
       if (!marcador) {
 
         marcador =
-          L.marker([
-            latitude,
-            longitude
-          ])
+          L.marker(
+            [
+              latitude,
+              longitude
+            ]
+          )
           .addTo(mapa)
           .bindPopup(
-            "📱 Sua localização"
+            "📍 Localização atual"
           );
 
       } else {
 
-        marcador.setLatLng([
-          latitude,
-          longitude
-        ]);
+        marcador.setLatLng(
+          [
+            latitude,
+            longitude
+          ]
+        );
 
       }
 
 
-      /* =========================
-         PRECISÃO
-      ========================= */
+      // ==========================================
+      // PRECISÃO
+      // ==========================================
 
       if (!circulo) {
 
         circulo =
           L.circle(
-            [latitude, longitude],
+
+            [
+              latitude,
+              longitude
+            ],
+
             {
               radius: precisao
             }
-          )
-          .addTo(mapa);
+
+          ).addTo(mapa);
 
       } else {
 
-        circulo.setLatLng([
-          latitude,
-          longitude
-        ]);
+        circulo.setLatLng(
+          [
+            latitude,
+            longitude
+          ]
+        );
 
         circulo.setRadius(
           precisao
@@ -405,82 +708,168 @@ window.iniciarGPS = function() {
       }
 
 
-      /* =========================
-         MAPA
-      ========================= */
+      // ==========================================
+      // CENTRALIZAR PRIMEIRA VEZ
+      // ==========================================
 
-      mapa.setView(
-        [latitude, longitude],
-        17
-      );
+      if (primeiraLocalizacao) {
 
-
-      /* =========================
-         FIREBASE
-      ========================= */
-
-      try {
-
-        await set(
-
-          ref(
-            database,
-            "veiculos/celular01"
-          ),
-
-          {
-
-            latitude: latitude,
-
-            longitude: longitude,
-
-            precisao: precisao,
-
-            velocidade: velocidade,
-
-            movimento: tipoMovimento,
-
-            atualizadoEm:
-              Date.now()
-
-          }
-
+        mapa.setView(
+          [
+            latitude,
+            longitude
+          ],
+          17
         );
 
-      } catch (erro) {
-
-        console.error(
-          "Firebase:",
-          erro
-        );
+        primeiraLocalizacao =
+          false;
 
       }
 
 
-      /* =========================
-         COMÉRCIOS
-      ========================= */
+      // ==========================================
+      // DESENHAR TRAJETO
+      // ==========================================
 
-      const agora =
-        Date.now();
-
-
-      /*
-       * Faz uma nova busca no máximo
-       * a cada 30 segundos.
-       */
-
-      if (
-        agora - ultimaBuscaComercio >
-        30000
-      ) {
-
-        ultimaBuscaComercio =
-          agora;
-
-        buscarComercios(
+      caminho.addLatLng(
+        [
           latitude,
           longitude
+        ]
+      );
+
+
+      // ==========================================
+      // DETECTAR PARADA
+      // ==========================================
+
+      if (!estaEmMovimento) {
+
+        if (!estaParado) {
+
+          await iniciarParada(
+            latitude,
+            longitude,
+            agora
+          );
+
+        }
+
+        const tempoAtual =
+          agora -
+          inicioParada;
+
+
+        document.getElementById(
+          "movimento"
+        ).textContent =
+          "🅿️ PARADO";
+
+
+        document.getElementById(
+          "tempoParado"
+        ).textContent =
+          formatarTempo(
+            tempoAtual
+          );
+
+      } else {
+
+        if (estaParado) {
+
+          await finalizarParada(
+            latitude,
+            longitude,
+            agora
+          );
+
+        }
+
+
+        document.getElementById(
+          "movimento"
+        ).textContent =
+          "🚗 EM MOVIMENTO";
+
+      }
+
+
+      // ==========================================
+      // SALVAR HISTÓRICO
+      // ==========================================
+
+      let deveSalvar = false;
+
+
+      if (
+        ultimaLatitude === null
+      ) {
+
+        deveSalvar = true;
+
+      } else {
+
+        const distancia =
+          distanciaMetros(
+
+            ultimaLatitude,
+            ultimaLongitude,
+
+            latitude,
+            longitude
+
+          );
+
+
+        const tempo =
+          agora -
+          ultimaGravacao;
+
+
+        if (
+          distancia >= 10 ||
+          tempo >= 10000
+        ) {
+
+          deveSalvar = true;
+
+        }
+
+      }
+
+
+      if (deveSalvar) {
+
+        ultimaLatitude =
+          latitude;
+
+        ultimaLongitude =
+          longitude;
+
+        ultimaGravacao =
+          agora;
+
+
+        quantidadePontos++;
+
+
+        document.getElementById(
+          "pontos"
+        ).textContent =
+          quantidadePontos;
+
+
+        await salvarPonto(
+
+          latitude,
+          longitude,
+
+          velocidade,
+          precisao,
+
+          agora
+
         );
 
       }
@@ -488,14 +877,16 @@ window.iniciarGPS = function() {
     },
 
 
-    function(erro) {
+    function(error) {
 
       console.error(
-        erro
+        error
       );
 
-      document.getElementById("status").innerText =
-        "❌ Permita a localização.";
+      document.getElementById(
+        "status"
+      ).textContent =
+        "❌ Erro ao obter GPS.";
 
     },
 
@@ -504,185 +895,154 @@ window.iniciarGPS = function() {
 
       enableHighAccuracy: true,
 
-      maximumAge: 1000,
+      maximumAge: 5000,
 
-      timeout: 15000
+      timeout: 20000
 
     }
 
   );
 
-};
+}
 
 
-/* =========================
-   BUSCAR COMÉRCIOS
-========================= */
+// =====================================================
+// CARREGAR PARADAS SALVAS
+// =====================================================
 
-async function buscarComercios(
-  latitude,
-  longitude
-) {
+onChildAdded(
 
-  /*
-   * Raio aproximado:
-   * 500 metros
-   */
+  ref(
+    db,
+    "paradas/celular01"
+  ),
 
-  const raio = 500;
+  function(snapshot) {
 
-
-  const query = `
-    [out:json];
-    (
-      node["shop"](around:${raio},${latitude},${longitude});
-      node["amenity"](around:${raio},${latitude},${longitude});
-      way["shop"](around:${raio},${latitude},${longitude});
-      way["amenity"](around:${raio},${latitude},${longitude});
-    );
-    out center tags;
-  `;
+    const parada =
+      snapshot.val();
 
 
-  try {
+    if (!parada) return;
 
-    const resposta =
-      await fetch(
-        "https://overpass-api.de/api/interpreter",
-        {
-          method: "POST",
 
-          body: query,
-
-          headers: {
-            "Content-Type":
-              "text/plain"
-          }
-        }
+    const div =
+      document.createElement(
+        "div"
       );
 
 
-    const dados =
-      await resposta.json();
+    div.className =
+      "parada";
 
 
-    /* APAGAR MARCADORES ANTIGOS */
+    div.innerHTML = `
 
-    comercios.forEach(
-      function(item) {
+      <strong>📍 Local parado</strong>
 
-        mapa.removeLayer(item);
+      <br>
 
-      }
-    );
+      Chegou:
+      ${parada.inicioTexto || "---"}
 
+      <br>
 
-    comercios = [];
+      Saiu:
+      ${parada.fimTexto || "---"}
 
+      <br>
 
-    /* CRIAR NOVOS */
+      <strong>
+        ⏱️ Tempo parado:
+        ${parada.duracaoTexto || "---"}
+      </strong>
 
-    dados.elements.forEach(
-      function(local) {
+      <br>
 
-        const tags =
-          local.tags || {};
+      Coordenadas:
+      ${Number(parada.latitude).toFixed(6)},
+      ${Number(parada.longitude).toFixed(6)}
 
-
-        const nome =
-          tags.name ||
-          "Comércio sem nome";
-
-
-        let lat =
-          local.lat;
-
-        let lon =
-          local.lon;
+    `;
 
 
-        if (
-          !lat &&
-          local.center
-        ) {
-
-          lat =
-            local.center.lat;
-
-          lon =
-            local.center.lon;
-
-        }
-
-
-        if (
-          !lat ||
-          !lon
-        ) {
-
-          return;
-
-        }
-
-
-        let tipo =
-          tags.shop ||
-          tags.amenity ||
-          "local";
-
-
-        const marcadorComercio =
-          L.marker(
-            [lat, lon],
-            {
-              icon:
-                iconeComercio
-            }
-          )
-          .addTo(mapa);
-
-
-        marcadorComercio.bindPopup(`
-
-          <div class="comercio">
-
-            <strong>
-              🏪 ${nome}
-            </strong>
-
-            <br><br>
-
-            Tipo:
-            ${tipo}
-
-          </div>
-
-        `);
-
-
-        comercios.push(
-          marcadorComercio
-        );
-
-      }
-    );
-
-
-    console.log(
-      "Comércios encontrados:",
-      dados.elements.length
-    );
-
-  } catch (erro) {
-
-    console.error(
-      "Erro buscando comércios:",
-      erro
-    );
+    document
+      .getElementById(
+        "historicoParadas"
+      )
+      .prepend(div);
 
   }
 
-}
+);
+
+
+// =====================================================
+// BOTÃO CENTRALIZAR
+// =====================================================
+
+window.centralizar =
+function() {
+
+  if (!marcador) {
+
+    alert(
+      "Aguardando localização GPS."
+    );
+
+    return;
+
+  }
+
+
+  mapa.setView(
+    marcador.getLatLng(),
+    18
+  );
+
+};
+
+
+// =====================================================
+// INICIAR
+// =====================================================
+
+iniciarGPS();
+
+
+// =====================================================
+// ATUALIZAR TEMPO PARADO A CADA SEGUNDO
+// =====================================================
+
+setInterval(
+
+  function() {
+
+    if (
+      estaParado &&
+      inicioParada
+    ) {
+
+      const agora =
+        Date.now();
+
+
+      document.getElementById(
+        "tempoParado"
+      ).textContent =
+
+        formatarTempo(
+          agora -
+          inicioParada
+        );
+
+    }
+
+  },
+
+  1000
+
+);
 
 </script>
 
