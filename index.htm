@@ -4,13 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Central GPS</title>
 
-  <title>Monitoramento GPS</title>
-
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <style>
     * {
@@ -19,71 +16,73 @@
 
     body {
       margin: 0;
+      font-family: Arial, sans-serif;
       background: #07111f;
       color: white;
-      font-family: Arial, sans-serif;
     }
 
     header {
-      background: #0d1b2e;
       padding: 15px;
+      background: #0d1b2a;
       text-align: center;
     }
 
-    h1 {
+    h2 {
       margin: 0;
-      font-size: 21px;
     }
 
     #status {
-      margin-top: 7px;
-      color: #7dd3fc;
-    }
-
-    #map {
-      width: 100%;
-      height: 58vh;
+      margin-top: 8px;
+      font-weight: bold;
     }
 
     .painel {
       padding: 12px;
-      background: #0d1b2e;
+      background: #10243a;
     }
 
-    .item {
-      background: #13243a;
+    .info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .card {
+      background: #172f49;
       padding: 10px;
-      margin-bottom: 8px;
-      border-radius: 10px;
-    }
-
-    .titulo {
-      color: #93c5fd;
-      font-size: 12px;
+      border-radius: 8px;
     }
 
     .valor {
-      margin-top: 4px;
-      font-size: 16px;
+      margin-top: 5px;
+      font-weight: bold;
+      color: #5ee7ff;
+      word-break: break-word;
     }
 
     button {
       width: 100%;
       padding: 13px;
+      margin-top: 10px;
       border: 0;
-      border-radius: 10px;
-      background: #2563eb;
+      border-radius: 8px;
+      background: #1683ff;
       color: white;
       font-size: 16px;
       font-weight: bold;
-      margin-top: 5px;
     }
 
-    .parada {
-      background: #182b43;
-      padding: 10px;
-      border-radius: 10px;
-      margin-bottom: 8px;
+    #map {
+      height: 55vh;
+      width: 100%;
+    }
+
+    .erro {
+      color: #ff7070;
+    }
+
+    .ok {
+      color: #63ff8a;
     }
   </style>
 </head>
@@ -91,961 +90,233 @@
 <body>
 
 <header>
-  <h1>📍 Monitoramento GPS</h1>
-  <div id="status">Iniciando GPS...</div>
+  <h2>📍 Central GPS</h2>
+  <div id="status">⏳ Iniciando GPS...</div>
 </header>
-
-<div id="map"></div>
 
 <div class="painel">
 
-  <div class="item">
-    <div class="titulo">LOCALIZAÇÃO</div>
-    <div class="valor" id="localizacao">---</div>
+  <div class="info">
+
+    <div class="card">
+      Latitude
+      <div class="valor" id="latitude">---</div>
+    </div>
+
+    <div class="card">
+      Longitude
+      <div class="valor" id="longitude">---</div>
+    </div>
+
+    <div class="card">
+      Precisão
+      <div class="valor" id="precisao">---</div>
+    </div>
+
+    <div class="card">
+      Velocidade
+      <div class="valor" id="velocidade">---</div>
+    </div>
+
+    <div class="card">
+      Atualização
+      <div class="valor" id="atualizacao">---</div>
+    </div>
+
+    <div class="card">
+      GPS
+      <div class="valor" id="gps">---</div>
+    </div>
+
   </div>
 
-  <div class="item">
-    <div class="titulo">VELOCIDADE</div>
-    <div class="valor" id="velocidade">---</div>
-  </div>
-
-  <div class="item">
-    <div class="titulo">MOVIMENTO</div>
-    <div class="valor" id="movimento">---</div>
-  </div>
-
-  <div class="item">
-    <div class="titulo">TEMPO PARADO NO LOCAL ATUAL</div>
-    <div class="valor" id="tempoParado">---</div>
-  </div>
-
-  <div class="item">
-    <div class="titulo">PRECISÃO GPS</div>
-    <div class="valor" id="precisao">---</div>
-  </div>
-
-  <div class="item">
-    <div class="titulo">PONTOS GUARDADOS</div>
-    <div class="valor" id="pontos">0</div>
-  </div>
-
-  <button onclick="centralizar()">
-    📍 Minha localização
+  <button onclick="iniciarGPS()">
+    📍 TESTAR GPS NOVAMENTE
   </button>
-
-  <h3>🅿️ Histórico de paradas</h3>
-
-  <div id="historicoParadas"></div>
 
 </div>
 
+<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<script>
 
-<script type="module">
+  let mapa;
+  let marcador = null;
+  let circulo = null;
+  let watchID = null;
 
-import { initializeApp }
+  function iniciarMapa() {
 
-from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+    mapa = L.map("map").setView([-19.9167, -43.9345], 13);
 
-
-import {
-
-  getDatabase,
-  ref,
-  push,
-  onChildAdded
-
-}
-
-from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
-
-
-// =====================================================
-// FIREBASE
-// =====================================================
-
-const firebaseConfig = {
-
-  apiKey:
-  "AIzaSyCL6zN5WSnqpjCg4gkmAJPurFrlMWEonco",
-
-  authDomain:
-  "banco-dados-94bb6.firebaseapp.com",
-
-  projectId:
-  "banco-dados-94bb6",
-
-  storageBucket:
-  "banco-dados-94bb6.firebasestorage.app",
-
-  messagingSenderId:
-  "496860851807",
-
-  appId:
-  "1:496860851807:web:3e830aabc6463dd51275ea"
-
-};
-
-
-const app = initializeApp(firebaseConfig);
-
-const db = getDatabase(app);
-
-
-// =====================================================
-// MAPA
-// =====================================================
-
-const mapa = L.map("map").setView(
-  [-19.9167, -43.9345],
-  13
-);
-
-
-L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  {
-    maxZoom: 20,
-    attribution: "&copy; OpenStreetMap"
-  }
-).addTo(mapa);
-
-
-let marcador = null;
-
-let circulo = null;
-
-let primeiraLocalizacao = true;
-
-
-// Caminho percorrido
-
-const caminho = L.polyline(
-  [],
-  {
-    weight: 5
-  }
-).addTo(mapa);
-
-
-// =====================================================
-// CONTROLE DE PARADA
-// =====================================================
-
-let estaParado = false;
-
-let inicioParada = null;
-
-let latitudeParada = null;
-
-let longitudeParada = null;
-
-let ultimaLatitude = null;
-
-let ultimaLongitude = null;
-
-let ultimaGravacao = 0;
-
-let quantidadePontos = 0;
-
-
-// =====================================================
-// DISTÂNCIA
-// =====================================================
-
-function distanciaMetros(
-  lat1,
-  lon1,
-  lat2,
-  lon2
-) {
-
-  const R = 6371000;
-
-  const rad = Math.PI / 180;
-
-  const dLat =
-    (lat2 - lat1) * rad;
-
-  const dLon =
-    (lon2 - lon1) * rad;
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-
-    Math.cos(lat1 * rad) *
-    Math.cos(lat2 * rad) *
-    Math.sin(dLon / 2) ** 2;
-
-  const c =
-    2 *
-    Math.atan2(
-      Math.sqrt(a),
-      Math.sqrt(1 - a)
-    );
-
-  return R * c;
-}
-
-
-// =====================================================
-// FORMATA TEMPO
-// =====================================================
-
-function formatarTempo(ms) {
-
-  let segundos =
-    Math.floor(ms / 1000);
-
-  const horas =
-    Math.floor(segundos / 3600);
-
-  segundos %= 3600;
-
-  const minutos =
-    Math.floor(segundos / 60);
-
-  segundos %= 60;
-
-
-  if (horas > 0) {
-
-    return (
-      horas + "h " +
-      minutos + "min " +
-      segundos + "s"
-    );
-
-  }
-
-
-  return (
-    minutos + "min " +
-    segundos + "s"
-  );
-
-}
-
-
-// =====================================================
-// MOVIMENTO
-// =====================================================
-
-function movimentoGPS(velocidade) {
-
-  if (velocidade >= 5) {
-
-    return "🚗 EM MOVIMENTO";
-
-  }
-
-  if (velocidade >= 1) {
-
-    return "🚶 MOVIMENTO LENTO";
-
-  }
-
-  return "🅿️ PARADO";
-
-}
-
-
-// =====================================================
-// SALVAR PONTO
-// =====================================================
-
-async function salvarPonto(
-  latitude,
-  longitude,
-  velocidade,
-  precisao,
-  timestamp
-) {
-
-  try {
-
-    await push(
-
-      ref(
-        db,
-        "historico/celular01"
-      ),
-
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
-
-        latitude,
-        longitude,
-
-        velocidade,
-        precisao,
-
-        timestamp,
-
-        data:
-        new Date(
-          timestamp
-        ).toLocaleString(
-          "pt-BR"
-        )
-
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
       }
-
-    );
-
-  } catch (erro) {
-
-    console.error(
-      erro
-    );
-
+    ).addTo(mapa);
   }
 
-}
+  function atualizarTela(posicao) {
 
+    const lat = posicao.coords.latitude;
+    const lon = posicao.coords.longitude;
+    const precisao = posicao.coords.accuracy;
 
-// =====================================================
-// COMEÇOU UMA PARADA
-// =====================================================
-
-async function iniciarParada(
-  latitude,
-  longitude,
-  timestamp
-) {
-
-  estaParado = true;
-
-  inicioParada = timestamp;
-
-  latitudeParada = latitude;
-
-  longitudeParada = longitude;
-
-
-  document.getElementById(
-    "movimento"
-  ).textContent =
-    "🅿️ PARADO";
-
-
-  console.log(
-    "Parou:",
-    new Date(timestamp)
-  );
-
-}
-
-
-// =====================================================
-// TERMINOU UMA PARADA
-// =====================================================
-
-async function finalizarParada(
-  latitude,
-  longitude,
-  timestamp
-) {
-
-  if (!estaParado) return;
-
-
-  const duracao =
-    timestamp -
-    inicioParada;
-
-
-  const dadosParada = {
-
-    latitude:
-    latitudeParada,
-
-    longitude:
-    longitudeParada,
-
-    inicio:
-    inicioParada,
-
-    fim:
-    timestamp,
-
-    duracao:
-
-    Math.floor(
-      duracao / 1000
-    ),
-
-    inicioTexto:
-
-    new Date(
-      inicioParada
-    ).toLocaleString(
-      "pt-BR"
-    ),
-
-    fimTexto:
-
-    new Date(
-      timestamp
-    ).toLocaleString(
-      "pt-BR"
-    ),
-
-    duracaoTexto:
-
-    formatarTempo(
-      duracao
-    )
-
-  };
-
-
-  try {
-
-    await push(
-
-      ref(
-        db,
-        "paradas/celular01"
-      ),
-
-      dadosParada
-
-    );
-
-  } catch (erro) {
-
-    console.error(
-      "Erro ao salvar parada:",
-      erro
-    );
-
-  }
-
-
-  estaParado = false;
-
-  inicioParada = null;
-
-  latitudeParada = null;
-
-  longitudeParada = null;
-
-
-  document.getElementById(
-    "tempoParado"
-  ).textContent =
-    "---";
-
-
-  console.log(
-    "Saiu do local.",
-    formatarTempo(duracao)
-  );
-
-}
-
-
-// =====================================================
-// GPS
-// =====================================================
-
-function iniciarGPS() {
-
-  if (!navigator.geolocation) {
-
-    document.getElementById(
-      "status"
-    ).textContent =
-      "❌ GPS não disponível.";
-
-    return;
-
-  }
-
-
-  navigator.geolocation.watchPosition(
-
-    async function(position) {
-
-      const latitude =
-        position.coords.latitude;
-
-      const longitude =
-        position.coords.longitude;
-
-
-      let velocidade =
-        position.coords.speed;
-
-
-      if (
-        velocidade === null ||
-        isNaN(velocidade)
-      ) {
-
-        velocidade = 0;
-
-      }
-
-
-      // metros por segundo → km/h
-
-      velocidade *= 3.6;
-
-
-      const precisao =
-        position.coords.accuracy;
-
-
-      const agora =
-        Date.now();
-
-
-      const estaEmMovimento =
-        velocidade >= 1;
-
-
-      // ==========================================
-      // TELA
-      // ==========================================
-
-      document.getElementById(
-        "localizacao"
-      ).textContent =
-
-        latitude.toFixed(6) +
-        ", " +
-        longitude.toFixed(6);
-
-
-      document.getElementById(
-        "velocidade"
-      ).textContent =
-
-        velocidade.toFixed(1) +
-        " km/h";
-
-
-      document.getElementById(
-        "precisao"
-      ).textContent =
-
-        precisao.toFixed(1) +
-        " metros";
-
-
-      document.getElementById(
-        "status"
-      ).textContent =
-        "🟢 GPS funcionando";
-
-
-      // ==========================================
-      // MARCADOR
-      // ==========================================
-
-      if (!marcador) {
-
-        marcador =
-          L.marker(
-            [
-              latitude,
-              longitude
-            ]
-          )
-          .addTo(mapa)
-          .bindPopup(
-            "📍 Localização atual"
-          );
-
-      } else {
-
-        marcador.setLatLng(
-          [
-            latitude,
-            longitude
-          ]
-        );
-
-      }
-
-
-      // ==========================================
-      // PRECISÃO
-      // ==========================================
-
-      if (!circulo) {
-
-        circulo =
-          L.circle(
-
-            [
-              latitude,
-              longitude
-            ],
-
-            {
-              radius: precisao
-            }
-
-          ).addTo(mapa);
-
-      } else {
-
-        circulo.setLatLng(
-          [
-            latitude,
-            longitude
-          ]
-        );
-
-        circulo.setRadius(
-          precisao
-        );
-
-      }
-
-
-      // ==========================================
-      // CENTRALIZAR PRIMEIRA VEZ
-      // ==========================================
-
-      if (primeiraLocalizacao) {
-
-        mapa.setView(
-          [
-            latitude,
-            longitude
-          ],
-          17
-        );
-
-        primeiraLocalizacao =
-          false;
-
-      }
-
-
-      // ==========================================
-      // DESENHAR TRAJETO
-      // ==========================================
-
-      caminho.addLatLng(
-        [
-          latitude,
-          longitude
-        ]
-      );
-
-
-      // ==========================================
-      // DETECTAR PARADA
-      // ==========================================
-
-      if (!estaEmMovimento) {
-
-        if (!estaParado) {
-
-          await iniciarParada(
-            latitude,
-            longitude,
-            agora
-          );
-
-        }
-
-        const tempoAtual =
-          agora -
-          inicioParada;
-
-
-        document.getElementById(
-          "movimento"
-        ).textContent =
-          "🅿️ PARADO";
-
-
-        document.getElementById(
-          "tempoParado"
-        ).textContent =
-          formatarTempo(
-            tempoAtual
-          );
-
-      } else {
-
-        if (estaParado) {
-
-          await finalizarParada(
-            latitude,
-            longitude,
-            agora
-          );
-
-        }
-
-
-        document.getElementById(
-          "movimento"
-        ).textContent =
-          "🚗 EM MOVIMENTO";
-
-      }
-
-
-      // ==========================================
-      // SALVAR HISTÓRICO
-      // ==========================================
-
-      let deveSalvar = false;
-
-
-      if (
-        ultimaLatitude === null
-      ) {
-
-        deveSalvar = true;
-
-      } else {
-
-        const distancia =
-          distanciaMetros(
-
-            ultimaLatitude,
-            ultimaLongitude,
-
-            latitude,
-            longitude
-
-          );
-
-
-        const tempo =
-          agora -
-          ultimaGravacao;
-
-
-        if (
-          distancia >= 10 ||
-          tempo >= 10000
-        ) {
-
-          deveSalvar = true;
-
-        }
-
-      }
-
-
-      if (deveSalvar) {
-
-        ultimaLatitude =
-          latitude;
-
-        ultimaLongitude =
-          longitude;
-
-        ultimaGravacao =
-          agora;
-
-
-        quantidadePontos++;
-
-
-        document.getElementById(
-          "pontos"
-        ).textContent =
-          quantidadePontos;
-
-
-        await salvarPonto(
-
-          latitude,
-          longitude,
-
-          velocidade,
-          precisao,
-
-          agora
-
-        );
-
-      }
-
-    },
-
-
-    function(error) {
-
-      console.error(
-        error
-      );
-
-      document.getElementById(
-        "status"
-      ).textContent =
-        "❌ Erro ao obter GPS.";
-
-    },
-
-
-    {
-
-      enableHighAccuracy: true,
-
-      maximumAge: 5000,
-
-      timeout: 20000
-
-    }
-
-  );
-
-}
-
-
-// =====================================================
-// CARREGAR PARADAS SALVAS
-// =====================================================
-
-onChildAdded(
-
-  ref(
-    db,
-    "paradas/celular01"
-  ),
-
-  function(snapshot) {
-
-    const parada =
-      snapshot.val();
-
-
-    if (!parada) return;
-
-
-    const div =
-      document.createElement(
-        "div"
-      );
-
-
-    div.className =
-      "parada";
-
-
-    div.innerHTML = `
-
-      <strong>📍 Local parado</strong>
-
-      <br>
-
-      Chegou:
-      ${parada.inicioTexto || "---"}
-
-      <br>
-
-      Saiu:
-      ${parada.fimTexto || "---"}
-
-      <br>
-
-      <strong>
-        ⏱️ Tempo parado:
-        ${parada.duracaoTexto || "---"}
-      </strong>
-
-      <br>
-
-      Coordenadas:
-      ${Number(parada.latitude).toFixed(6)},
-      ${Number(parada.longitude).toFixed(6)}
-
-    `;
-
-
-    document
-      .getElementById(
-        "historicoParadas"
-      )
-      .prepend(div);
-
-  }
-
-);
-
-
-// =====================================================
-// BOTÃO CENTRALIZAR
-// =====================================================
-
-window.centralizar =
-function() {
-
-  if (!marcador) {
-
-    alert(
-      "Aguardando localização GPS."
-    );
-
-    return;
-
-  }
-
-
-  mapa.setView(
-    marcador.getLatLng(),
-    18
-  );
-
-};
-
-
-// =====================================================
-// INICIAR
-// =====================================================
-
-iniciarGPS();
-
-
-// =====================================================
-// ATUALIZAR TEMPO PARADO A CADA SEGUNDO
-// =====================================================
-
-setInterval(
-
-  function() {
+    let velocidade = posicao.coords.speed;
 
     if (
-      estaParado &&
-      inicioParada
+      velocidade === null ||
+      velocidade === undefined ||
+      isNaN(velocidade)
     ) {
+      velocidade = 0;
+    } else {
+      velocidade = velocidade * 3.6;
+    }
 
-      const agora =
-        Date.now();
+    document.getElementById("latitude").textContent =
+      lat.toFixed(6);
 
+    document.getElementById("longitude").textContent =
+      lon.toFixed(6);
 
-      document.getElementById(
-        "tempoParado"
-      ).textContent =
+    document.getElementById("precisao").textContent =
+      precisao.toFixed(1) + " metros";
 
-        formatarTempo(
-          agora -
-          inicioParada
-        );
+    document.getElementById("velocidade").textContent =
+      velocidade.toFixed(1) + " km/h";
+
+    document.getElementById("atualizacao").textContent =
+      new Date().toLocaleTimeString();
+
+    document.getElementById("gps").textContent =
+      "🟢 LOCALIZAÇÃO RECEBIDA";
+
+    document.getElementById("gps").className =
+      "valor ok";
+
+    document.getElementById("status").textContent =
+      "🟢 GPS FUNCIONANDO";
+
+    document.getElementById("status").className =
+      "ok";
+
+    if (!marcador) {
+
+      marcador = L.marker([lat, lon])
+        .addTo(mapa)
+        .bindPopup("📍 Localização atual")
+        .openPopup();
+
+    } else {
+
+      marcador.setLatLng([lat, lon]);
 
     }
 
-  },
+    if (!circulo) {
 
-  1000
+      circulo = L.circle(
+        [lat, lon],
+        {
+          radius: precisao
+        }
+      ).addTo(mapa);
 
-);
+    } else {
+
+      circulo.setLatLng([lat, lon]);
+      circulo.setRadius(precisao);
+
+    }
+
+    mapa.setView([lat, lon], 17);
+  }
+
+  function erroGPS(erro) {
+
+    document.getElementById("gps").className =
+      "valor erro";
+
+    if (erro.code === 1) {
+
+      document.getElementById("gps").textContent =
+        "🔴 PERMISSÃO NEGADA";
+
+      document.getElementById("status").textContent =
+        "🔴 Permita o acesso à localização";
+
+    } else if (erro.code === 2) {
+
+      document.getElementById("gps").textContent =
+        "🔴 LOCALIZAÇÃO INDISPONÍVEL";
+
+      document.getElementById("status").textContent =
+        "🔴 GPS não encontrado";
+
+    } else if (erro.code === 3) {
+
+      document.getElementById("gps").textContent =
+        "🔴 TEMPO ESGOTADO";
+
+      document.getElementById("status").textContent =
+        "🔴 GPS demorou para responder";
+
+    } else {
+
+      document.getElementById("gps").textContent =
+        "🔴 ERRO";
+
+      document.getElementById("status").textContent =
+        "🔴 Erro desconhecido";
+    }
+
+    console.log(erro);
+  }
+
+  function iniciarGPS() {
+
+    if (!navigator.geolocation) {
+
+      document.getElementById("status").textContent =
+        "🔴 Este navegador não suporta GPS";
+
+      return;
+    }
+
+    document.getElementById("status").textContent =
+      "🛰️ Procurando localização...";
+
+    document.getElementById("gps").textContent =
+      "⏳ Aguardando GPS...";
+
+    if (watchID !== null) {
+
+      navigator.geolocation.clearWatch(watchID);
+
+    }
+
+    watchID = navigator.geolocation.watchPosition(
+      atualizarTela,
+      erroGPS,
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 30000
+      }
+    );
+  }
+
+  iniciarMapa();
+  iniciarGPS();
 
 </script>
 
 </body>
 </html>
+
 
