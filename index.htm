@@ -1,0 +1,691 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Monitoramento GPS</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #172033;
+    }
+
+    header {
+      background: white;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 2px 8px #0002;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    #status {
+      margin-top: 7px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #1677ff;
+    }
+
+    #map {
+      width: 100%;
+      height: 60vh;
+      min-height: 360px;
+    }
+
+    .painel {
+      padding: 12px;
+    }
+
+    .dados {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .card {
+      background: white;
+      padding: 13px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px #0001;
+    }
+
+    .titulo {
+      font-size: 12px;
+      color: #687386;
+    }
+
+    .valor {
+      margin-top: 5px;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 15px;
+      border: 0;
+      border-radius: 12px;
+      background: #1677ff;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .comercio {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .comercio strong {
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>📍 Monitoramento GPS</h1>
+  <div id="status">Aguardando localização...</div>
+</header>
+
+<div id="map"></div>
+
+<div class="painel">
+
+  <div class="dados">
+
+    <div class="card">
+      <div class="titulo">Latitude</div>
+      <div class="valor" id="latitude">--</div>
+    </div>
+
+    <div class="card">
+      <div class="titulo">Longitude</div>
+      <div class="valor" id="longitude">--</div>
+    </div>
+
+    <div class="card">
+      <div class="titulo">Precisão</div>
+      <div class="valor" id="precisao">--</div>
+    </div>
+
+    <div class="card">
+      <div class="titulo">Movimento</div>
+      <div class="valor" id="movimento">--</div>
+    </div>
+
+  </div>
+
+  <button onclick="iniciarGPS()">
+    📡 Iniciar monitoramento
+  </button>
+
+</div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+<script type="module">
+
+/* =========================
+   FIREBASE
+========================= */
+
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+
+import {
+  getDatabase,
+  ref,
+  set
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+
+const firebaseConfig = {
+
+  apiKey:
+    "AIzaSyCL6zN5WSnqpjCg4gkmAJPurFrlMWEonco",
+
+  authDomain:
+    "banco-dados-94bb6.firebaseapp.com",
+
+  databaseURL:
+    "https://banco-dados-94bb6-default-rtdb.firebaseio.com",
+
+  projectId:
+    "banco-dados-94bb6",
+
+  storageBucket:
+    "banco-dados-94bb6.firebasestorage.app",
+
+  messagingSenderId:
+    "496860851807",
+
+  appId:
+    "1:496860851807:web:3e830aabc6463dd51275ea"
+};
+
+
+const app = initializeApp(firebaseConfig);
+
+const database = getDatabase(app);
+
+
+/* =========================
+   MAPA
+========================= */
+
+const mapa = L.map("map").setView(
+  [-19.9167, -43.9345],
+  15
+);
+
+
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }
+).addTo(mapa);
+
+
+/* =========================
+   VARIÁVEIS
+========================= */
+
+let marcador = null;
+let circulo = null;
+
+let ultimaLatitude = null;
+let ultimaLongitude = null;
+
+let comercios = [];
+
+let ultimaBuscaComercio = 0;
+
+
+/* =========================
+   ÍCONES
+========================= */
+
+const iconeComercio =
+  L.divIcon({
+
+    className: "",
+
+    html: `
+      <div style="
+        background:white;
+        border:2px solid #1677ff;
+        border-radius:50%;
+        width:34px;
+        height:34px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:18px;
+        box-shadow:0 2px 6px #0004;
+      ">
+        🏪
+      </div>
+    `,
+
+    iconSize: [34,34],
+
+    iconAnchor: [17,17]
+
+  });
+
+
+/* =========================
+   GPS
+========================= */
+
+window.iniciarGPS = function() {
+
+  if (!navigator.geolocation) {
+
+    document.getElementById("status").innerText =
+      "❌ GPS não disponível.";
+
+    return;
+  }
+
+
+  document.getElementById("status").innerText =
+    "🔎 Procurando GPS...";
+
+
+  navigator.geolocation.watchPosition(
+
+    async function(posicao) {
+
+      const latitude =
+        posicao.coords.latitude;
+
+      const longitude =
+        posicao.coords.longitude;
+
+      const precisao =
+        posicao.coords.accuracy;
+
+
+      let velocidade =
+        posicao.coords.speed;
+
+
+      if (velocidade === null) {
+
+        velocidade = 0;
+
+      } else {
+
+        velocidade =
+          velocidade * 3.6;
+
+      }
+
+
+      /* =========================
+         MOVIMENTO
+      ========================= */
+
+      let tipoMovimento =
+        "🅿️ PARADO";
+
+
+      if (velocidade >= 5) {
+
+        tipoMovimento =
+          "🚗 MOVIMENTO";
+
+      } else if (velocidade >= 1) {
+
+        tipoMovimento =
+          "🚶 A PÉ";
+
+      }
+
+
+      /* =========================
+         TELA
+      ========================= */
+
+      document.getElementById("latitude").innerText =
+        latitude.toFixed(6);
+
+      document.getElementById("longitude").innerText =
+        longitude.toFixed(6);
+
+      document.getElementById("precisao").innerText =
+        Math.round(precisao) + " metros";
+
+      document.getElementById("movimento").innerText =
+        tipoMovimento;
+
+
+      document.getElementById("status").innerText =
+        "🟢 GPS conectado";
+
+
+      /* =========================
+         MARCADOR
+      ========================= */
+
+      if (!marcador) {
+
+        marcador =
+          L.marker([
+            latitude,
+            longitude
+          ])
+          .addTo(mapa)
+          .bindPopup(
+            "📱 Sua localização"
+          );
+
+      } else {
+
+        marcador.setLatLng([
+          latitude,
+          longitude
+        ]);
+
+      }
+
+
+      /* =========================
+         PRECISÃO
+      ========================= */
+
+      if (!circulo) {
+
+        circulo =
+          L.circle(
+            [latitude, longitude],
+            {
+              radius: precisao
+            }
+          )
+          .addTo(mapa);
+
+      } else {
+
+        circulo.setLatLng([
+          latitude,
+          longitude
+        ]);
+
+        circulo.setRadius(
+          precisao
+        );
+
+      }
+
+
+      /* =========================
+         MAPA
+      ========================= */
+
+      mapa.setView(
+        [latitude, longitude],
+        17
+      );
+
+
+      /* =========================
+         FIREBASE
+      ========================= */
+
+      try {
+
+        await set(
+
+          ref(
+            database,
+            "veiculos/celular01"
+          ),
+
+          {
+
+            latitude: latitude,
+
+            longitude: longitude,
+
+            precisao: precisao,
+
+            velocidade: velocidade,
+
+            movimento: tipoMovimento,
+
+            atualizadoEm:
+              Date.now()
+
+          }
+
+        );
+
+      } catch (erro) {
+
+        console.error(
+          "Firebase:",
+          erro
+        );
+
+      }
+
+
+      /* =========================
+         COMÉRCIOS
+      ========================= */
+
+      const agora =
+        Date.now();
+
+
+      /*
+       * Faz uma nova busca no máximo
+       * a cada 30 segundos.
+       */
+
+      if (
+        agora - ultimaBuscaComercio >
+        30000
+      ) {
+
+        ultimaBuscaComercio =
+          agora;
+
+        buscarComercios(
+          latitude,
+          longitude
+        );
+
+      }
+
+    },
+
+
+    function(erro) {
+
+      console.error(
+        erro
+      );
+
+      document.getElementById("status").innerText =
+        "❌ Permita a localização.";
+
+    },
+
+
+    {
+
+      enableHighAccuracy: true,
+
+      maximumAge: 1000,
+
+      timeout: 15000
+
+    }
+
+  );
+
+};
+
+
+/* =========================
+   BUSCAR COMÉRCIOS
+========================= */
+
+async function buscarComercios(
+  latitude,
+  longitude
+) {
+
+  /*
+   * Raio aproximado:
+   * 500 metros
+   */
+
+  const raio = 500;
+
+
+  const query = `
+    [out:json];
+    (
+      node["shop"](around:${raio},${latitude},${longitude});
+      node["amenity"](around:${raio},${latitude},${longitude});
+      way["shop"](around:${raio},${latitude},${longitude});
+      way["amenity"](around:${raio},${latitude},${longitude});
+    );
+    out center tags;
+  `;
+
+
+  try {
+
+    const resposta =
+      await fetch(
+        "https://overpass-api.de/api/interpreter",
+        {
+          method: "POST",
+
+          body: query,
+
+          headers: {
+            "Content-Type":
+              "text/plain"
+          }
+        }
+      );
+
+
+    const dados =
+      await resposta.json();
+
+
+    /* APAGAR MARCADORES ANTIGOS */
+
+    comercios.forEach(
+      function(item) {
+
+        mapa.removeLayer(item);
+
+      }
+    );
+
+
+    comercios = [];
+
+
+    /* CRIAR NOVOS */
+
+    dados.elements.forEach(
+      function(local) {
+
+        const tags =
+          local.tags || {};
+
+
+        const nome =
+          tags.name ||
+          "Comércio sem nome";
+
+
+        let lat =
+          local.lat;
+
+        let lon =
+          local.lon;
+
+
+        if (
+          !lat &&
+          local.center
+        ) {
+
+          lat =
+            local.center.lat;
+
+          lon =
+            local.center.lon;
+
+        }
+
+
+        if (
+          !lat ||
+          !lon
+        ) {
+
+          return;
+
+        }
+
+
+        let tipo =
+          tags.shop ||
+          tags.amenity ||
+          "local";
+
+
+        const marcadorComercio =
+          L.marker(
+            [lat, lon],
+            {
+              icon:
+                iconeComercio
+            }
+          )
+          .addTo(mapa);
+
+
+        marcadorComercio.bindPopup(`
+
+          <div class="comercio">
+
+            <strong>
+              🏪 ${nome}
+            </strong>
+
+            <br><br>
+
+            Tipo:
+            ${tipo}
+
+          </div>
+
+        `);
+
+
+        comercios.push(
+          marcadorComercio
+        );
+
+      }
+    );
+
+
+    console.log(
+      "Comércios encontrados:",
+      dados.elements.length
+    );
+
+  } catch (erro) {
+
+    console.error(
+      "Erro buscando comércios:",
+      erro
+    );
+
+  }
+
+}
+
+</script>
+
+</body>
+</html>
+```
