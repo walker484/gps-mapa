@@ -1,322 +1,1930 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Central GPS</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-  <link rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Walker GPS</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #07111f;
-      color: white;
-    }
+<style>
+*{
+  box-sizing:border-box;
+}
 
-    header {
-      padding: 15px;
-      background: #0d1b2a;
-      text-align: center;
-    }
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#07111f;
+  color:white;
+}
 
-    h2 {
-      margin: 0;
-    }
+header{
+  background:#0d1b2a;
+  padding:16px;
+  text-align:center;
+  position:sticky;
+  top:0;
+  z-index:1000;
+}
 
-    #status {
-      margin-top: 8px;
-      font-weight: bold;
-    }
+header h1{
+  margin:0;
+  font-size:22px;
+}
 
-    .painel {
-      padding: 12px;
-      background: #10243a;
-    }
+#status{
+  margin-top:7px;
+  font-size:14px;
+  font-weight:bold;
+}
 
-    .info {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+.ok{
+  color:#55f58a;
+}
 
-    .card {
-      background: #172f49;
-      padding: 10px;
-      border-radius: 8px;
-    }
+.warn{
+  color:#ffd166;
+}
 
-    .valor {
-      margin-top: 5px;
-      font-weight: bold;
-      color: #5ee7ff;
-      word-break: break-word;
-    }
+.erro{
+  color:#ff7070;
+}
 
-    button {
-      width: 100%;
-      padding: 13px;
-      margin-top: 10px;
-      border: 0;
-      border-radius: 8px;
-      background: #1683ff;
-      color: white;
-      font-size: 16px;
-      font-weight: bold;
-    }
+.painel{
+  padding:10px;
+  background:#10243a;
+}
 
-    #map {
-      height: 55vh;
-      width: 100%;
-    }
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
 
-    .erro {
-      color: #ff7070;
-    }
+.card{
+  background:#172f49;
+  border-radius:10px;
+  padding:11px;
+}
 
-    .ok {
-      color: #63ff8a;
-    }
-  </style>
+.card small{
+  color:#aebfd0;
+}
+
+.valor{
+  margin-top:5px;
+  color:#5ee7ff;
+  font-weight:bold;
+  word-break:break-word;
+}
+
+button{
+  width:100%;
+  border:0;
+  border-radius:9px;
+  padding:13px;
+  margin-top:8px;
+  background:#1683ff;
+  color:white;
+  font-size:15px;
+  font-weight:bold;
+}
+
+button.secundario{
+  background:#263f58;
+}
+
+button.perigo{
+  background:#9d3030;
+}
+
+#map{
+  width:100%;
+  height:55vh;
+}
+
+.secao{
+  padding:12px;
+}
+
+.titulo{
+  font-size:19px;
+  font-weight:bold;
+  margin-bottom:10px;
+}
+
+input,textarea{
+  width:100%;
+  padding:12px;
+  margin-top:7px;
+  border:1px solid #36536e;
+  border-radius:8px;
+  background:#0d1b2a;
+  color:white;
+  font-size:15px;
+}
+
+textarea{
+  min-height:80px;
+  resize:vertical;
+}
+
+.item{
+  background:#172f49;
+  border-radius:10px;
+  padding:12px;
+  margin-top:9px;
+}
+
+.item strong{
+  color:#5ee7ff;
+}
+
+.tag{
+  display:inline-block;
+  background:#1683ff;
+  padding:4px 8px;
+  border-radius:20px;
+  font-size:12px;
+  margin-top:5px;
+}
+
+.lugar-icon{
+  background:#1683ff;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  border:3px solid white;
+  box-shadow:0 0 10px #1683ff;
+}
+
+.atual-icon{
+  background:#21e66b;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  border:4px solid white;
+  box-shadow:0 0 14px #21e66b;
+}
+
+.linha-separadora{
+  height:1px;
+  background:#28445e;
+  margin:15px 0;
+}
+
+#qualidade{
+  height:8px;
+  background:#263f58;
+  border-radius:10px;
+  overflow:hidden;
+  margin-top:7px;
+}
+
+#qualidadeBarra{
+  height:100%;
+  width:0%;
+  background:#21e66b;
+}
+
+.nenhum{
+  color:#9fb1c3;
+  padding:10px 0;
+}
+
+footer{
+  padding:20px;
+  text-align:center;
+  color:#71869b;
+  font-size:12px;
+}
+</style>
 </head>
 
 <body>
 
 <header>
-  <h2>📍 Central GPS</h2>
-  <div id="status">⏳ Iniciando GPS...</div>
+
+<h1>📍 WALKER GPS</h1>
+
+<div id="status" class="warn">
+⏳ Iniciando GPS...
+</div>
+
 </header>
+
 
 <div class="painel">
 
-  <div class="info">
+<div class="grid">
 
-    <div class="card">
-      Latitude
-      <div class="valor" id="latitude">---</div>
-    </div>
+<div class="card">
+<small>Latitude</small>
+<div class="valor" id="latitude">---</div>
+</div>
 
-    <div class="card">
-      Longitude
-      <div class="valor" id="longitude">---</div>
-    </div>
+<div class="card">
+<small>Longitude</small>
+<div class="valor" id="longitude">---</div>
+</div>
 
-    <div class="card">
-      Precisão
-      <div class="valor" id="precisao">---</div>
-    </div>
+<div class="card">
+<small>Precisão</small>
+<div class="valor" id="precisao">---</div>
+</div>
 
-    <div class="card">
-      Velocidade
-      <div class="valor" id="velocidade">---</div>
-    </div>
+<div class="card">
+<small>Velocidade</small>
+<div class="valor" id="velocidade">---</div>
+</div>
 
-    <div class="card">
-      Atualização
-      <div class="valor" id="atualizacao">---</div>
-    </div>
+<div class="card">
+<small>Altitude</small>
+<div class="valor" id="altitude">---</div>
+</div>
 
-    <div class="card">
-      GPS
-      <div class="valor" id="gps">---</div>
-    </div>
+<div class="card">
+<small>Direção</small>
+<div class="valor" id="direcao">---</div>
+</div>
 
-  </div>
+<div class="card">
+<small>Atualização</small>
+<div class="valor" id="atualizacao">---</div>
+</div>
 
-  <button onclick="iniciarGPS()">
-    📍 TESTAR GPS NOVAMENTE
-  </button>
+<div class="card">
+<small>GPS</small>
+<div class="valor" id="gps">---</div>
+</div>
 
 </div>
 
+
+<div class="card" style="margin-top:8px">
+
+<small>Qualidade do GPS</small>
+
+<div id="qualidade">
+<div id="qualidadeBarra"></div>
+</div>
+
+<div class="valor" id="qualidadeTexto">
+Aguardando GPS...
+</div>
+
+</div>
+
+
+<button onclick="irParaAtual()">
+📍 Ir para minha posição
+</button>
+
+<button class="secundario" onclick="alternarSeguir()">
+🧭 Seguindo: SIM
+</button>
+
+<button onclick="salvarLugarAtual()">
+📌 Salvar lugar atual
+</button>
+
+</div>
+
+
 <div id="map"></div>
+
+
+<div class="secao">
+
+<div class="titulo">
+📌 Salvar lugar
+</div>
+
+<input
+  id="nomeLugar"
+  placeholder="Nome do lugar. Ex.: Escola"
+/>
+
+<input
+  id="numeroLugar"
+  placeholder="Número"
+/>
+
+<input
+  id="enderecoLugar"
+  placeholder="Endereço"
+/>
+
+<textarea
+  id="observacaoLugar"
+  placeholder="Observação"
+></textarea>
+
+<button onclick="salvarLugarFormulario()">
+💾 Salvar lugar
+</button>
+
+</div>
+
+
+<div class="secao">
+
+<div class="titulo">
+📍 Lugares salvos
+</div>
+
+<div id="listaLugares">
+<div class="nenhum">
+Nenhum lugar salvo.
+</div>
+</div>
+
+</div>
+
+
+<div class="secao">
+
+<div class="titulo">
+🧭 Histórico da trajetória
+</div>
+
+<div class="card">
+
+<div>
+Pontos registrados:
+<strong id="totalPontos">0</strong>
+</div>
+
+<div>
+Lugares visitados:
+<strong id="totalLugares">0</strong>
+</div>
+
+</div>
+
+<div id="historico">
+<div class="nenhum">
+Nenhum ponto registrado ainda.
+</div>
+</div>
+
+</div>
+
+
+<div class="secao">
+
+<div class="titulo">
+🔌 Dispositivo / Chip
+</div>
+
+<div class="card">
+
+<div>
+Status:
+<strong id="statusChip">📱 Celular em teste</strong>
+</div>
+
+<div style="margin-top:8px">
+Conexão:
+<strong id="conexaoChip">Online</strong>
+</div>
+
+<div style="margin-top:8px">
+Bateria:
+<strong id="bateriaChip">---</strong>
+</div>
+
+<div style="margin-top:8px">
+Sinal 4G:
+<strong id="sinalChip">---</strong>
+</div>
+
+</div>
+
+<p style="color:#9fb1c3;font-size:13px">
+A área do chip fica preparada para futuramente receber
+dados da placa GPS 4G/GNSS.
+</p>
+
+</div>
+
+
+<div class="secao">
+
+<div class="titulo">
+⚙️ Dados
+</div>
+
+<button onclick="exportarDados()">
+📤 Exportar dados
+</button>
+
+<button class="secundario" onclick="limparTrajeto()">
+🧹 Limpar trajetória de hoje
+</button>
+
+<button class="perigo" onclick="apagarTudo()">
+🗑️ Apagar todos os dados
+</button>
+
+</div>
+
+
+<footer>
+Walker GPS — sistema de localização com autorização do usuário
+</footer>
+
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-  let mapa;
-  let marcador = null;
-  let circulo = null;
-  let watchID = null;
+/* =========================================================
+   CONFIGURAÇÃO
+========================================================= */
 
-  function iniciarMapa() {
+const VERSAO = "walker_v3";
 
-    mapa = L.map("map").setView([-19.9167, -43.9345], 13);
+const CHAVE_TRAJETO =
+  VERSAO + "_trajeto_" +
+  new Date().toISOString().slice(0,10);
 
+const CHAVE_LUGARES =
+  VERSAO + "_lugares";
+
+let mapa;
+
+let marcadorAtual = null;
+
+let circuloPrecisao = null;
+
+let linhaTrajeto = null;
+
+let watchID = null;
+
+let ultimaPosicao = null;
+
+let primeiraPosicaoBoa = false;
+
+let seguindo = true;
+
+let pontos = [];
+
+let lugares = [];
+
+let camadas = {};
+
+let online = navigator.onLine;
+
+
+/* =========================================================
+   INICIAR MAPA
+========================================================= */
+
+function iniciarMapa(){
+
+  mapa = L.map("map");
+
+  const mapaNormal =
     L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap"
+        maxZoom:19,
+        attribution:"© OpenStreetMap"
+      }
+    );
+
+  const mapaSatelite =
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom:19,
+        attribution:"Tiles © Esri"
+      }
+    );
+
+  mapaNormal.addTo(mapa);
+
+  camadas = {
+    "🗺️ Mapa":mapaNormal,
+    "🛰️ Satélite":mapaSatelite
+  };
+
+  L.control.layers(camadas).addTo(mapa);
+
+  mapa.setView([-19.9167,-43.9345],13);
+
+  linhaTrajeto =
+    L.polyline(
+      [],
+      {
+        weight:5,
+        opacity:.85
       }
     ).addTo(mapa);
+}
+
+
+/* =========================================================
+   DISTÂNCIA
+========================================================= */
+
+function distancia(lat1,lon1,lat2,lon2){
+
+  const R = 6371000;
+
+  const rad = Math.PI / 180;
+
+  const dLat =
+    (lat2-lat1)*rad;
+
+  const dLon =
+    (lon2-lon1)*rad;
+
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(lat1*rad) *
+    Math.cos(lat2*rad) *
+    Math.sin(dLon/2)**2;
+
+  return R *
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1-a)
+    );
+}
+
+
+/* =========================================================
+   CARREGAR DADOS
+========================================================= */
+
+function carregarDados(){
+
+  try{
+
+    const dadosTrajeto =
+      localStorage.getItem(CHAVE_TRAJETO);
+
+    if(dadosTrajeto){
+      pontos =
+        JSON.parse(dadosTrajeto);
+    }
+
+    const dadosLugares =
+      localStorage.getItem(CHAVE_LUGARES);
+
+    if(dadosLugares){
+      lugares =
+        JSON.parse(dadosLugares);
+    }
+
+  }catch(e){
+
+    console.log(e);
+
+    pontos=[];
+    lugares=[];
+
   }
 
-  function atualizarTela(posicao) {
+  desenharTrajeto();
 
-    const lat = posicao.coords.latitude;
-    const lon = posicao.coords.longitude;
-    const precisao = posicao.coords.accuracy;
+  mostrarLugares();
 
-    let velocidade = posicao.coords.speed;
+}
 
-    if (
-      velocidade === null ||
-      velocidade === undefined ||
-      isNaN(velocidade)
-    ) {
-      velocidade = 0;
-    } else {
-      velocidade = velocidade * 3.6;
-    }
 
-    document.getElementById("latitude").textContent =
-      lat.toFixed(6);
+/* =========================================================
+   SALVAR TRAJETÓRIA
+========================================================= */
 
-    document.getElementById("longitude").textContent =
-      lon.toFixed(6);
+function salvarPonto(lat,lon,accuracy){
 
-    document.getElementById("precisao").textContent =
-      precisao.toFixed(1) + " metros";
+  /*
+    Só grava GPS realmente razoável.
 
-    document.getElementById("velocidade").textContent =
-      velocidade.toFixed(1) + " km/h";
+    Isso evita que uma localização aproximada
+    mande o mapa para outro estado.
+  */
 
-    document.getElementById("atualizacao").textContent =
-      new Date().toLocaleTimeString();
+  if(!accuracy || accuracy > 30){
 
-    document.getElementById("gps").textContent =
-      "🟢 LOCALIZAÇÃO RECEBIDA";
+    return;
 
-    document.getElementById("gps").className =
-      "valor ok";
+  }
 
-    document.getElementById("status").textContent =
-      "🟢 GPS FUNCIONANDO";
 
-    document.getElementById("status").className =
-      "ok";
+  if(pontos.length){
 
-    if (!marcador) {
+    const ultimo =
+      pontos[pontos.length-1];
 
-      marcador = L.marker([lat, lon])
-        .addTo(mapa)
-        .bindPopup("📍 Localização atual")
-        .openPopup();
+    const d =
+      distancia(
+        ultimo.lat,
+        ultimo.lon,
+        lat,
+        lon
+      );
 
-    } else {
+    /*
+      Ignora pequenas oscilações do GPS.
+    */
 
-      marcador.setLatLng([lat, lon]);
+    if(d < 5){
+
+      return;
 
     }
 
-    if (!circulo) {
+  }
 
-      circulo = L.circle(
-        [lat, lon],
+
+  const agora = new Date();
+
+  const ponto = {
+
+    lat:lat,
+
+    lon:lon,
+
+    accuracy:accuracy,
+
+    hora:
+      agora.toLocaleTimeString("pt-BR"),
+
+    data:
+      agora.toLocaleDateString("pt-BR"),
+
+    timestamp:
+      agora.getTime()
+
+  };
+
+
+  pontos.push(ponto);
+
+
+  localStorage.setItem(
+    CHAVE_TRAJETO,
+    JSON.stringify(pontos)
+  );
+
+
+  desenharTrajeto();
+
+  mostrarHistorico();
+
+}
+
+
+/* =========================================================
+   DESENHAR TRAJETO
+========================================================= */
+
+function desenharTrajeto(){
+
+  if(!linhaTrajeto){
+    return;
+  }
+
+  const coordenadas =
+    pontos.map(
+      p => [p.lat,p.lon]
+    );
+
+
+  linhaTrajeto.setLatLngs(
+    coordenadas
+  );
+
+
+  document.getElementById(
+    "totalPontos"
+  ).textContent =
+    pontos.length;
+
+
+  /*
+    Não usamos fitBounds aqui.
+
+    Assim o mapa não fica pulando
+    para um ponto antigo.
+  */
+
+}
+
+
+/* =========================================================
+   GPS
+========================================================= */
+
+function iniciarGPS(){
+
+  if(!navigator.geolocation){
+
+    atualizarStatus(
+      "🔴 Navegador não suporta GPS",
+      "erro"
+    );
+
+    return;
+
+  }
+
+
+  atualizarStatus(
+    "🛰️ Procurando localização...",
+    "warn"
+  );
+
+
+  if(watchID !== null){
+
+    navigator.geolocation.clearWatch(
+      watchID
+    );
+
+  }
+
+
+  watchID =
+    navigator.geolocation.watchPosition(
+
+      atualizarGPS,
+
+      erroGPS,
+
+      {
+        enableHighAccuracy:true,
+
+        maximumAge:0,
+
+        timeout:30000
+      }
+
+    );
+
+}
+
+
+/* =========================================================
+   RECEBER GPS
+========================================================= */
+
+function atualizarGPS(posicao){
+
+  const coords =
+    posicao.coords;
+
+
+  const lat =
+    coords.latitude;
+
+  const lon =
+    coords.longitude;
+
+  const accuracy =
+    coords.accuracy;
+
+
+  let velocidade =
+    coords.speed;
+
+
+  if(
+    velocidade === null ||
+    velocidade === undefined ||
+    isNaN(velocidade)
+  ){
+
+    velocidade = 0;
+
+  }else{
+
+    velocidade *= 3.6;
+
+  }
+
+
+  let direcao =
+    coords.heading;
+
+
+  if(
+    direcao === null ||
+    direcao === undefined ||
+    isNaN(direcao)
+  ){
+
+    direcao = "---";
+
+  }else{
+
+    direcao =
+      Math.round(direcao) +
+      "°";
+
+  }
+
+
+  document.getElementById(
+    "latitude"
+  ).textContent =
+    lat.toFixed(6);
+
+
+  document.getElementById(
+    "longitude"
+  ).textContent =
+    lon.toFixed(6);
+
+
+  document.getElementById(
+    "precisao"
+  ).textContent =
+    accuracy.toFixed(1) +
+    " metros";
+
+
+  document.getElementById(
+    "velocidade"
+  ).textContent =
+    velocidade.toFixed(1) +
+    " km/h";
+
+
+  document.getElementById(
+    "altitude"
+  ).textContent =
+    coords.altitude !== null
+      ? coords.altitude.toFixed(1)+" m"
+      : "---";
+
+
+  document.getElementById(
+    "direcao"
+  ).textContent =
+    direcao;
+
+
+  document.getElementById(
+    "atualizacao"
+  ).textContent =
+    new Date().toLocaleTimeString(
+      "pt-BR"
+    );
+
+
+  document.getElementById(
+    "gps"
+  ).textContent =
+    "🟢 RECEBIDO";
+
+
+  atualizarQualidade(
+    accuracy
+  );
+
+
+  /*
+    Marcador atual
+  */
+
+  if(!marcadorAtual){
+
+    marcadorAtual =
+      L.marker(
+        [lat,lon],
         {
-          radius: precisao
+          icon:
+            L.divIcon({
+              className:"",
+              html:
+                '<div class="atual-icon"></div>',
+              iconSize:[22,22],
+              iconAnchor:[11,11]
+            })
+        }
+      )
+      .addTo(mapa)
+      .bindPopup(
+        "📍 Você está aqui"
+      );
+
+  }else{
+
+    marcadorAtual.setLatLng(
+      [lat,lon]
+    );
+
+  }
+
+
+  /*
+    Círculo de precisão
+  */
+
+  if(!circuloPrecisao){
+
+    circuloPrecisao =
+      L.circle(
+        [lat,lon],
+        {
+          radius:accuracy,
+          opacity:.5
         }
       ).addTo(mapa);
 
-    } else {
+  }else{
 
-      circulo.setLatLng([lat, lon]);
-      circulo.setRadius(precisao);
+    circuloPrecisao.setLatLng(
+      [lat,lon]
+    );
 
-    }
+    circuloPrecisao.setRadius(
+      accuracy
+    );
 
-    mapa.setView([lat, lon], 17);
   }
 
-  function erroGPS(erro) {
 
-    document.getElementById("gps").className =
-      "valor erro";
+  /*
+    Só considera localização
+    realmente boa abaixo de 30m.
+  */
 
-    if (erro.code === 1) {
+  if(accuracy <= 30){
 
-      document.getElementById("gps").textContent =
-        "🔴 PERMISSÃO NEGADA";
+    atualizarStatus(
+      "🟢 GPS preciso — rastreamento ativo",
+      "ok"
+    );
 
-      document.getElementById("status").textContent =
-        "🔴 Permita o acesso à localização";
 
-    } else if (erro.code === 2) {
+    /*
+      Primeira posição realmente boa:
+      leva o mapa para o usuário.
+    */
 
-      document.getElementById("gps").textContent =
-        "🔴 LOCALIZAÇÃO INDISPONÍVEL";
+    if(!primeiraPosicaoBoa){
 
-      document.getElementById("status").textContent =
-        "🔴 GPS não encontrado";
+      primeiraPosicaoBoa = true;
 
-    } else if (erro.code === 3) {
+      mapa.setView(
+        [lat,lon],
+        17
+      );
 
-      document.getElementById("gps").textContent =
-        "🔴 TEMPO ESGOTADO";
-
-      document.getElementById("status").textContent =
-        "🔴 GPS demorou para responder";
-
-    } else {
-
-      document.getElementById("gps").textContent =
-        "🔴 ERRO";
-
-      document.getElementById("status").textContent =
-        "🔴 Erro desconhecido";
     }
 
-    console.log(erro);
+
+    if(seguindo){
+
+      mapa.panTo(
+        [lat,lon],
+        {
+          animate:true
+        }
+      );
+
+    }
+
+
+    salvarPonto(
+      lat,
+      lon,
+      accuracy
+    );
+
+
+  }else{
+
+    atualizarStatus(
+      "🟡 GPS melhorando — precisão "+
+      accuracy.toFixed(0)+" m",
+      "warn"
+    );
+
   }
 
-  function iniciarGPS() {
 
-    if (!navigator.geolocation) {
+  ultimaPosicao = {
+    lat:lat,
+    lon:lon,
+    accuracy:accuracy,
+    velocidade:velocidade,
+    timestamp:Date.now()
+  };
 
-      document.getElementById("status").textContent =
-        "🔴 Este navegador não suporta GPS";
+}
 
-      return;
-    }
 
-    document.getElementById("status").textContent =
-      "🛰️ Procurando localização...";
+/* =========================================================
+   QUALIDADE GPS
+========================================================= */
 
-    document.getElementById("gps").textContent =
-      "⏳ Aguardando GPS...";
+function atualizarQualidade(accuracy){
 
-    if (watchID !== null) {
+  const barra =
+    document.getElementById(
+      "qualidadeBarra"
+    );
 
-      navigator.geolocation.clearWatch(watchID);
+  const texto =
+    document.getElementById(
+      "qualidadeTexto"
+    );
 
-    }
 
-    watchID = navigator.geolocation.watchPosition(
-      atualizarTela,
-      erroGPS,
+  let percentual;
+
+
+  if(accuracy <= 10){
+
+    percentual=100;
+
+    texto.textContent =
+      "Excelente — "+
+      accuracy.toFixed(1)+" m";
+
+  }
+
+  else if(accuracy <= 30){
+
+    percentual=85;
+
+    texto.textContent =
+      "Boa — "+
+      accuracy.toFixed(1)+" m";
+
+  }
+
+  else if(accuracy <= 80){
+
+    percentual=55;
+
+    texto.textContent =
+      "Regular — "+
+      accuracy.toFixed(1)+" m";
+
+  }
+
+  else{
+
+    percentual=25;
+
+    texto.textContent =
+      "Fraca — "+
+      accuracy.toFixed(1)+" m";
+
+  }
+
+
+  barra.style.width =
+    percentual+"%";
+
+}
+
+
+/* =========================================================
+   ERRO GPS
+========================================================= */
+
+function erroGPS(erro){
+
+  if(erro.code === 1){
+
+    atualizarStatus(
+      "🔴 Permissão de localização negada",
+      "erro"
+    );
+
+  }
+
+  else if(erro.code === 2){
+
+    atualizarStatus(
+      "🔴 Localização indisponível",
+      "erro"
+    );
+
+  }
+
+  else if(erro.code === 3){
+
+    atualizarStatus(
+      "🟡 GPS demorou para responder",
+      "warn"
+    );
+
+  }
+
+  else{
+
+    atualizarStatus(
+      "🔴 Erro no GPS",
+      "erro"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function atualizarStatus(texto,classe){
+
+  const el =
+    document.getElementById(
+      "status"
+    );
+
+  el.textContent=texto;
+
+  el.className=classe;
+
+}
+
+
+/* =========================================================
+   SEGUIR MAPA
+========================================================= */
+
+function alternarSeguir(){
+
+  seguindo=!seguindo;
+
+  const botao =
+    document.querySelector(
+      'button[onclick="alternarSeguir()"]'
+    );
+
+
+  botao.textContent =
+    seguindo
+      ? "🧭 Seguindo: SIM"
+      : "🧭 Seguindo: NÃO";
+
+
+  if(
+    seguindo &&
+    ultimaPosicao
+  ){
+
+    mapa.panTo([
+      ultimaPosicao.lat,
+      ultimaPosicao.lon
+    ]);
+
+  }
+
+}
+
+
+/* =========================================================
+   IR PARA POSIÇÃO
+========================================================= */
+
+function irParaAtual(){
+
+  if(!ultimaPosicao){
+
+    alert(
+      "Ainda não recebemos uma posição GPS."
+    );
+
+    return;
+
+  }
+
+
+  mapa.setView(
+    [
+      ultimaPosicao.lat,
+      ultimaPosicao.lon
+    ],
+    18
+  );
+
+
+  if(marcadorAtual){
+
+    marcadorAtual.openPopup();
+
+  }
+
+}
+
+
+/* =========================================================
+   SALVAR LUGAR ATUAL
+========================================================= */
+
+function salvarLugarAtual(){
+
+  if(!ultimaPosicao){
+
+    alert(
+      "Aguarde o GPS encontrar sua posição."
+    );
+
+    return;
+
+  }
+
+
+  document.getElementById(
+    "nomeLugar"
+  ).focus();
+
+
+  alert(
+    "Preencha o nome do lugar e depois toque em Salvar lugar."
+  );
+
+}
+
+
+/* =========================================================
+   SALVAR LUGAR
+========================================================= */
+
+function salvarLugarFormulario(){
+
+  if(!ultimaPosicao){
+
+    alert(
+      "Aguarde o GPS encontrar uma posição."
+    );
+
+    return;
+
+  }
+
+
+  const nome =
+    document.getElementById(
+      "nomeLugar"
+    ).value.trim();
+
+
+  if(!nome){
+
+    alert(
+      "Digite o nome do lugar."
+    );
+
+    return;
+
+  }
+
+
+  const numero =
+    document.getElementById(
+      "numeroLugar"
+    ).value.trim();
+
+
+  const endereco =
+    document.getElementById(
+      "enderecoLugar"
+    ).value.trim();
+
+
+  const observacao =
+    document.getElementById(
+      "observacaoLugar"
+    ).value.trim();
+
+
+  const lugar={
+
+    id:Date.now(),
+
+    nome:nome,
+
+    numero:numero,
+
+    endereco:endereco,
+
+    observacao:observacao,
+
+    lat:ultimaPosicao.lat,
+
+    lon:ultimaPosicao.lon,
+
+    chegada:
+      new Date().toLocaleString(
+        "pt-BR"
+      ),
+
+    timestamp:
+      Date.now(),
+
+    visitas:1,
+
+    minutos:0
+
+  };
+
+
+  lugares.push(lugar);
+
+
+  localStorage.setItem(
+    CHAVE_LUGARES,
+    JSON.stringify(lugares)
+  );
+
+
+  adicionarMarcadorLugar(
+    lugar
+  );
+
+
+  mostrarLugares();
+
+
+  document.getElementById(
+    "nomeLugar"
+  ).value="";
+
+
+  document.getElementById(
+    "numeroLugar"
+  ).value="";
+
+
+  document.getElementById(
+    "enderecoLugar"
+  ).value="";
+
+
+  document.getElementById(
+    "observacaoLugar"
+  ).value="";
+
+
+  alert(
+    "Lugar salvo com sucesso."
+  );
+
+}
+
+
+/* =========================================================
+   MARCADOR DO LUGAR
+========================================================= */
+
+function adicionarMarcadorLugar(lugar){
+
+  const icone =
+    L.divIcon({
+      className:"",
+      html:
+        '<div class="lugar-icon"></div>',
+      iconSize:[20,20],
+      iconAnchor:[10,10]
+    });
+
+
+  const marcador =
+    L.marker(
+      [lugar.lat,lugar.lon],
       {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 30000
+        icon:icone
+      }
+    ).addTo(mapa);
+
+
+  let texto =
+    "<b>📍 "+escapar(lugar.nome)+"</b>";
+
+
+  if(lugar.numero){
+
+    texto +=
+      "<br>Número: "+
+      escapar(lugar.numero);
+
+  }
+
+
+  if(lugar.endereco){
+
+    texto +=
+      "<br>Endereço: "+
+      escapar(lugar.endereco);
+
+  }
+
+
+  texto +=
+    "<br>Chegada: "+
+    escapar(lugar.chegada);
+
+
+  texto +=
+    "<br>Visitas: "+
+    lugar.visitas;
+
+
+  marcador.bindPopup(texto);
+
+}
+
+
+/* =========================================================
+   MOSTRAR LUGARES
+========================================================= */
+
+function mostrarLugares(){
+
+  const lista =
+    document.getElementById(
+      "listaLugares"
+    );
+
+
+  document.getElementById(
+    "totalLugares"
+  ).textContent =
+    lugares.length;
+
+
+  lista.innerHTML="";
+
+
+  if(!lugares.length){
+
+    lista.innerHTML =
+      '<div class="nenhum">'+
+      'Nenhum lugar salvo.'+
+      '</div>';
+
+    return;
+
+  }
+
+
+  lugares
+    .slice()
+    .reverse()
+    .forEach(lugar=>{
+
+      const div =
+        document.createElement(
+          "div"
+        );
+
+
+      div.className="item";
+
+
+      div.innerHTML =
+
+        "<strong>📍 "+
+        escapar(lugar.nome)+
+        "</strong>"+
+
+        "<br>"+
+
+        (
+          lugar.numero
+            ? "Número: "+
+              escapar(lugar.numero)+
+              "<br>"
+            :""
+        )+
+
+        (
+          lugar.endereco
+            ? "Endereço: "+
+              escapar(lugar.endereco)+
+              "<br>"
+            :""
+        )+
+
+        "<span class='tag'>"+
+        "Visitas: "+
+        lugar.visitas+
+        "</span>"+
+
+        "<br>"+
+
+        "<small>"+
+        "Salvo: "+
+        escapar(lugar.chegada)+
+        "</small>"+
+
+        "<br>"+
+
+        "<button onclick='verLugar("+
+        lugar.id+
+        ")'>"+
+        "📍 Ver no mapa"+
+        "</button>"+
+
+        "<button class='perigo' onclick='excluirLugar("+
+        lugar.id+
+        ")'>"+
+        "Excluir"+
+        "</button>";
+
+
+      lista.appendChild(div);
+
+    });
+
+}
+
+
+/* =========================================================
+   VER LUGAR
+========================================================= */
+
+function verLugar(id){
+
+  const lugar =
+    lugares.find(
+      l=>l.id===id
+    );
+
+
+  if(!lugar){
+    return;
+  }
+
+
+  mapa.setView(
+    [lugar.lat,lugar.lon],
+    18
+  );
+
+}
+
+
+/* =========================================================
+   EXCLUIR LUGAR
+========================================================= */
+
+function excluirLugar(id){
+
+  if(
+    !confirm(
+      "Excluir este lugar?"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  lugares =
+    lugares.filter(
+      l=>l.id!==id
+    );
+
+
+  localStorage.setItem(
+    CHAVE_LUGARES,
+    JSON.stringify(lugares)
+  );
+
+
+  mostrarLugares();
+
+}
+
+
+/* =========================================================
+   HISTÓRICO
+========================================================= */
+
+function mostrarHistorico(){
+
+  const el =
+    document.getElementById(
+      "historico"
+    );
+
+
+  if(!pontos.length){
+
+    el.innerHTML =
+      '<div class="nenhum">'+
+      'Nenhum ponto registrado ainda.'+
+      '</div>';
+
+    return;
+
+  }
+
+
+  el.innerHTML="";
+
+
+  pontos
+    .slice()
+    .reverse()
+    .forEach(
+      (ponto,index)=>{
+
+        const item =
+          document.createElement(
+            "div"
+          );
+
+
+        item.className="item";
+
+
+        item.innerHTML =
+
+          "<strong>📍 Ponto "+
+          (pontos.length-index)+
+          "</strong>"+
+
+          "<br>🕐 "+
+          ponto.hora+
+
+          "<br>📅 "+
+          ponto.data+
+
+          "<br>📡 Precisão: "+
+          ponto.accuracy.toFixed(1)+
+          " m"+
+
+          "<br>🌐 "+
+          ponto.lat.toFixed(6)+
+          ", "+
+          ponto.lon.toFixed(6);
+
+
+        el.appendChild(item);
+
       }
     );
+
+}
+
+
+/* =========================================================
+   EXPORTAR
+========================================================= */
+
+function exportarDados(){
+
+  const dados={
+
+    projeto:"Walker GPS",
+
+    exportado:
+      new Date().toISOString(),
+
+    trajetoria:pontos,
+
+    lugares:lugares
+
+  };
+
+
+  const arquivo =
+    new Blob(
+      [
+        JSON.stringify(
+          dados,
+          null,
+          2
+        )
+      ],
+      {
+        type:"application/json"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(
+      arquivo
+    );
+
+
+  const a =
+    document.createElement(
+      "a"
+    );
+
+
+  a.href=url;
+
+  a.download =
+    "walker-gps-"+
+
+    new Date()
+      .toISOString()
+      .slice(0,10)+
+
+    ".json";
+
+
+  a.click();
+
+
+  URL.revokeObjectURL(
+    url
+  );
+
+}
+
+
+/* =========================================================
+   LIMPAR TRAJETO
+========================================================= */
+
+function limparTrajeto(){
+
+  if(
+    !confirm(
+      "Apagar somente a trajetória de hoje?"
+    )
+  ){
+
+    return;
+
   }
 
-  iniciarMapa();
-  iniciarGPS();
+
+  pontos=[];
+
+
+  localStorage.removeItem(
+    CHAVE_TRAJETO
+  );
+
+
+  linhaTrajeto.setLatLngs(
+    []
+  );
+
+
+  mostrarHistorico();
+
+
+  document.getElementById(
+    "totalPontos"
+  ).textContent="0";
+
+}
+
+
+/* =========================================================
+   APAGAR TUDO
+========================================================= */
+
+function apagarTudo(){
+
+  if(
+    !confirm(
+      "Isso apagará lugares e trajetória. Continuar?"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  localStorage.removeItem(
+    CHAVE_TRAJETO
+  );
+
+
+  localStorage.removeItem(
+    CHAVE_LUGARES
+  );
+
+
+  pontos=[];
+
+  lugares=[];
+
+
+  linhaTrajeto.setLatLngs(
+    []
+  );
+
+
+  mostrarHistorico();
+
+  mostrarLugares();
+
+
+  document.getElementById(
+    "totalPontos"
+  ).textContent="0";
+
+
+  document.getElementById(
+    "totalLugares"
+  ).textContent="0";
+
+}
+
+
+/* =========================================================
+   ESCAPAR TEXTO
+========================================================= */
+
+function escapar(texto){
+
+  return String(texto)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+}
+
+
+/* =========================================================
+   INTERNET / OFFLINE
+========================================================= */
+
+window.addEventListener(
+  "online",
+  function(){
+
+    online=true;
+
+    document.getElementById(
+      "conexaoChip"
+    ).textContent=
+      "🟢 Online";
+
+  }
+);
+
+
+window.addEventListener(
+  "offline",
+  function(){
+
+    online=false;
+
+    document.getElementById(
+      "conexaoChip"
+    ).textContent=
+      "🟡 Offline — dados salvos no celular";
+
+  }
+);
+
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+
+iniciarMapa();
+
+carregarDados();
+
+mostrarHistorico();
+
+iniciarGPS();
+
+
+document.getElementById(
+  "conexaoChip"
+).textContent =
+  navigator.onLine
+    ? "🟢 Online"
+    : "🟡 Offline";
+
+
+/*
+  Atualiza histórico na abertura.
+*/
+
+setInterval(
+  mostrarHistorico,
+  10000
+);
 
 </script>
 
 </body>
 </html>
-
-
